@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <errno.h>
 #include <pthread.h>
+#include <string.h>
+#include <stdlib.h>
 
 
 #include <iostream>
@@ -49,10 +51,19 @@ int initUart(int argc, const char * argv[])
         exit(errno);
     }
 
-    if (cfsetispeed(&config, bauds) < 0 || cfsetospeed(&config, bauds) < 0)
+    if (bauds != 5566)
     {
-        perror("can't set baud rate");
-        exit(errno);
+
+        if (cfsetispeed(&config, bauds) < 0 || cfsetospeed(&config, bauds) < 0)
+        {
+            perror("can't set baud rate");
+            exit(errno);
+        }
+    }
+    else
+    {
+        printf("Bypass bauds\n");
+
     }
 
     config.c_iflag &= ~(IGNBRK | BRKINT | ICRNL | INLCR | PARMRK | INPCK | ISTRIP | IXON);
