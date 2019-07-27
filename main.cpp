@@ -76,11 +76,19 @@ void* f(void* arg)
 
     printf("hello = fd = %d\n", fd);
 
-    char buffer[1024];
+    char buffer[10240];
     while (true)
     {
         char * pbuf = buffer;
+        errno = 0;
         int ret = read(fd, pbuf, sizeof(buffer));
+
+        if (ret == 0)
+        {
+            perror("");
+
+
+        }
 
         if (ret <= 0)
             continue;
@@ -108,46 +116,37 @@ int main(int argc, const char * argv[])
     pthread_create(&pth, NULL,f,  &fd);
 
 
+//#define DEBUG_EN
 
 
     char buffer[1024];
-    int fid = 0;
     while (true)
     {
         errno = 0;
         int n = 0;
 
-
-#if 1
-        //        int n;
         string input;
+
+#ifdef DEBUG_EN
         printf("[%d][========== DEBUG---- cin ====]\n", ++fid);
+#endif
         getline(cin, input);
         n = input.size();
 
         if (input == "x")
             continue;
 
-
         memset(buffer, 0, sizeof(buffer));
-
-
-        //
         strcpy(buffer, input.c_str());
+
+#ifdef DEBUG_EN
         printf("buf(%d) = [%s]\n", n, buffer);
+#endif
 
         if (input == "qq")
             break;
 
-
-#endif
-        //       continue;
-        //    n = 0;
-        //        buffer[n++] = 0xd;
         buffer[n++] = 0xa;
-        //
-        //
-        // //n = write(fd, &ent, 1);
         n = write(fd, buffer, n);
 
     }
