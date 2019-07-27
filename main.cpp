@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <errno.h>
+#include <pthread.h>
 
 
 #include <iostream>
@@ -69,6 +70,31 @@ int initUart(int argc, const char * argv[])
 
 }
 
+void* f(void* arg)
+{
+    int fd = *(int*)arg;
+
+    printf("hello = fd = %d\n", fd);
+
+    char buffer[1024];
+    while (true)
+    {
+        char * pbuf = buffer;
+        int ret = read(fd, pbuf, sizeof(buffer));
+
+        if (ret <= 0)
+            continue;
+
+        int n = ret;
+
+        write(STDOUT_FILENO, buffer, n);
+        fflush(stdout);
+
+    }
+
+    return NULL;
+}
+
 int main(int argc, const char * argv[])
 {
 
@@ -77,57 +103,19 @@ int main(int argc, const char * argv[])
     // close (fd);
     // return 0;
 
+
+    pthread_t pth;
+    pthread_create(&pth, NULL,f,  &fd);
+
+
+
+
     char buffer[1024];
     int fid = 0;
     while (true)
     {
         errno = 0;
         int n = 0;
-
-        {
-            int rem = sizeof(buffer) - 1;
-            memset(buffer, 0, sizeof(buffer));
-
-            char *pbuf = buffer;
-            while (1)
-            {
-                int tmp = read(fd, pbuf, rem);
-                printf("tmp = %d\n", tmp);
-                if (tmp <= 0)
-                    break;
-
-                n += tmp;
-                pbuf += tmp;
-                rem -= tmp;
-            }
-        }
-
-        if (n < 0)
-        {
-            perror("");
-        }
-        else
-        {
-            write(STDOUT_FILENO, buffer, n);
-            printf("OUT n = %d\n", n);
-#if 0
-            if (n == 3)
-            {
-                printf("%x,%x,%x\n",
-                    buffer[0],
-                    buffer[1],
-                    buffer[2]);
-
-            }
-#endif
-
-
-        }
-
-
-
-        fflush(stdout);
-
 
 
 #if 1
