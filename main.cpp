@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <errno.h>
 
 
 #include <iostream>
@@ -9,7 +10,7 @@
 
 using namespace std;
 
-int main(int argc, const char * argv[])
+int initUart(int argc, const char * argv[])
 {
     if (argc < 2 || argc > 3)
     {
@@ -64,15 +65,102 @@ int main(int argc, const char * argv[])
         exit(errno);
     }
 
-    char buffer[80];
+    return fd;
+
+}
+
+int main(int argc, const char * argv[])
+{
+
+    int fd = initUart(argc, argv);
+
+    // close (fd);
+    // return 0;
+
+    char buffer[1024];
+    int fid = 0;
     while (true)
     {
-        size_t n = read(fd, buffer, sizeof buffer);
-        write(STDOUT_FILENO, buffer, n);
+        errno = 0;
+        int n = 0;
 
-    //    printf("n = %d\n", n);
-        int ent = 0xa;
-        n = write(fd, &ent, 1);
+        {
+            int rem = sizeof(buffer) - 1;
+            memset(buffer, 0, sizeof(buffer));
+
+            char *pbuf = buffer;
+            while (1)
+            {
+                int tmp = read(fd, pbuf, rem);
+                printf("tmp = %d\n", tmp);
+                if (tmp <= 0)
+                    break;
+
+                n += tmp;
+                pbuf += tmp;
+                rem -= tmp;
+            }
+        }
+
+        if (n < 0)
+        {
+            perror("");
+        }
+        else
+        {
+            write(STDOUT_FILENO, buffer, n);
+            printf("OUT n = %d\n", n);
+#if 0
+            if (n == 3)
+            {
+                printf("%x,%x,%x\n",
+                    buffer[0],
+                    buffer[1],
+                    buffer[2]);
+
+            }
+#endif
+
+
+        }
+
+
+
+        fflush(stdout);
+
+
+
+#if 1
+        //        int n;
+        string input;
+        printf("[%d][========== DEBUG---- cin ====]\n", ++fid);
+        getline(cin, input);
+        n = input.size();
+
+        if (input == "x")
+            continue;
+
+
+        memset(buffer, 0, sizeof(buffer));
+
+
+        //
+        strcpy(buffer, input.c_str());
+        printf("buf(%d) = [%s]\n", n, buffer);
+
+        if (input == "qq")
+            break;
+
+
+#endif
+        //       continue;
+        //    n = 0;
+        //        buffer[n++] = 0xd;
+        buffer[n++] = 0xa;
+        //
+        //
+        // //n = write(fd, &ent, 1);
+        n = write(fd, buffer, n);
 
     }
 
