@@ -9,6 +9,9 @@
 #include <fcntl.h>
 #include <unistd.h>
 
+#include <curses.h>
+
+
 using namespace std;
 
 int initUart(int argc, const char * argv[])
@@ -74,7 +77,7 @@ void* f(void* arg)
 {
     int fd = *(int*)arg;
 
-    printf("hello = fd = %d\n", fd);
+    printf("======== HyTerm ====== \n");
 
     char buffer[10240];
     while (true)
@@ -86,8 +89,6 @@ void* f(void* arg)
         if (ret == 0)
         {
             perror("");
-
-
         }
 
         if (ret <= 0)
@@ -108,16 +109,8 @@ int main(int argc, const char * argv[])
 
     int fd = initUart(argc, argv);
 
-    // close (fd);
-    // return 0;
-
-
     pthread_t pth;
     pthread_create(&pth, NULL,f,  &fd);
-
-
-//#define DEBUG_EN
-
 
     char buffer[1024];
     while (true)
@@ -131,10 +124,13 @@ int main(int argc, const char * argv[])
         printf("[%d][========== DEBUG---- cin ====]\n", ++fid);
 #endif
         getline(cin, input);
+
         n = input.size();
+
 
         if (input == "x")
             continue;
+
 
         memset(buffer, 0, sizeof(buffer));
         strcpy(buffer, input.c_str());
@@ -145,6 +141,7 @@ int main(int argc, const char * argv[])
 
         if (input == "qq")
             break;
+
 
         buffer[n++] = 0xa;
         n = write(fd, buffer, n);
