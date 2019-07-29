@@ -4,7 +4,8 @@
 CC       = gcc
 CXX      = g++
 CFLAGS   = -g -Wall
-CXXFLAGS = $(CFLAGS) -Weffc++
+#CXXFLAGS = $(CFLAGS) -Weffc++ -std=c++11
+CXXFLAGS = $(CFLAGS) -std=c++11
 #LIBS     = -lm -lpthread -lcurses
 LIBS     = -lm -lpthread
 INCPATH  =

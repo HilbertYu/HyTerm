@@ -3,6 +3,7 @@
 #include <pthread.h>
 #include <string.h>
 #include <stdlib.h>
+#include <thread>
 
 
 #include <iostream>
@@ -28,6 +29,7 @@ public:
 
     };
 
+
     int initUart(const std::string & device, int bauds)
     {
         const char * c_device = device.c_str();
@@ -48,7 +50,6 @@ public:
 
         if (bauds > 0)
         {
-
             if (cfsetispeed(&config, bauds) < 0 || cfsetospeed(&config, bauds) < 0)
             {
                 perror("can't set baud rate");
@@ -120,85 +121,67 @@ public:
         return 0;
     }
 
-};
-
-
-void* f(void* arg)
-{
-    int fd = *(int*)arg;
-
-    printf("======== HyTerm ====== \n");
-
-    char buffer[10240];
-    while (true)
+    virtual int outputProc(void)
     {
-        char * pbuf = buffer;
-        int ret = read(fd, pbuf, sizeof(buffer));
+        int fd = uart_fd;
 
+        printf("======== HyTerm Start ====== \n");
 
-        if (ret <= 0)
-            continue;
-
-        int n = ret;
-
-        int n_fl = 0;
-        char out_buf[10240] = {0};
-
-        for (int i = 0; i < n; ++i)
+        char buffer[10240];
+        while (true)
         {
-            char ch = *pbuf++;
-            if (ch == 0 || ch == '\r')
+            char * pbuf = buffer;
+            int ret = read(fd, pbuf, sizeof(buffer));
+
+
+            if (ret <= 0)
                 continue;
 
-            out_buf[n_fl++] = ch;
+            int n = ret;
+
+            int n_fl = 0;
+            char out_buf[10240] = {0};
+
+            for (int i = 0; i < n; ++i)
+            {
+                char ch = *pbuf++;
+                if (ch == 0 || ch == '\r')
+                    continue;
+
+                out_buf[n_fl++] = ch;
+
+            }
+
+            //write(STDOUT_FILENO, buffer, n);
+            write(STDOUT_FILENO, out_buf, n_fl);
+            fflush(stdout);
 
         }
 
-
-
-        //write(STDOUT_FILENO, buffer, n);
-        write(STDOUT_FILENO, out_buf, n_fl);
-        fflush(stdout);
-
+        return 0;
     }
 
-    return NULL;
-}
+};
 
 int main(int argc, const char * argv[])
 {
-    int fd = -1;
-    HyTermBase ht_base;
-
+    if (argc != 3)
     {
-        if (argc < 2 || argc > 3)
-        {
-            cerr << "usage: " << argv[0] << " device [bauds]" << endl;
-            return 1;
-        }
-
-        string device = argv[1];
-        int bauds = 9600;
-        if (argc == 3)
-        {
-            bauds = atoi(argv[2]);
-        }
-        else
-        {
-            cerr << "usage: " << argv[0] << " device [bauds]" << endl;
-            return 1;
-        }
-        printf("b = %d\n", bauds);
-
-        fd = ht_base.initUart(argv[1], bauds);
+        cerr << "usage: " << argv[0] << " device [bauds]" << endl;
+        return 1;
     }
 
+    HyTermBase ht_base;
 
-    pthread_t pth;
-    pthread_create(&pth, NULL,f,  &fd);
+    string device = argv[1];
+    int bauds = atoi(argv[2]);
 
+    ht_base.initUart(argv[1], bauds);
+
+    std::thread th_output(&HyTermBase::outputProc, &ht_base);
     ht_base.inputProc();
+    ht_base.close();
 
-    close(fd);
     return 0;
 }
+
