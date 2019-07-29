@@ -21,7 +21,9 @@ using namespace std;
 
 class HyTermBase
 {
+protected:
     int uart_fd;
+
 public:
     HyTermBase(void):
         uart_fd(-1)
@@ -138,6 +140,36 @@ public:
                 continue;
 
             int n = ret;
+            write(STDOUT_FILENO, buffer, n);
+            fflush(stdout);
+
+        }
+
+        return 0;
+    }
+
+};
+
+class HyTermReadAscii: public HyTermBase
+{
+public:
+    virtual int outputProc(void)
+    {
+        int fd = uart_fd;
+
+        printf("======== HyTerm Start ====== \n");
+
+        char buffer[10240];
+        while (true)
+        {
+            char * pbuf = buffer;
+            int ret = read(fd, pbuf, sizeof(buffer));
+
+
+            if (ret <= 0)
+                continue;
+
+            int n = ret;
 
             int n_fl = 0;
             char out_buf[10240] = {0};
@@ -171,16 +203,17 @@ int main(int argc, const char * argv[])
         return 1;
     }
 
-    HyTermBase ht_base;
+    //HyTermBase * hyterm = new HyTermBase();
+    HyTermBase * hyterm = new HyTermReadAscii();
 
     string device = argv[1];
     int bauds = atoi(argv[2]);
 
-    ht_base.initUart(argv[1], bauds);
+    hyterm->initUart(argv[1], bauds);
 
-    std::thread th_output(&HyTermBase::outputProc, &ht_base);
-    ht_base.inputProc();
-    ht_base.close();
+    std::thread th_output(&HyTermBase::outputProc, hyterm);
+    hyterm->inputProc();
+    hyterm->close();
 
     return 0;
 }
