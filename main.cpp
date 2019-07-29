@@ -84,74 +84,44 @@ public:
         return ::close(uart_fd);
     }
 
+    int inputProc(void)
+    {
+        char buffer[1024];
+        while (true)
+        {
+            errno = 0;
+            int n = 0;
+
+            string input;
+
+#ifdef DEBUG_EN
+            printf("[%d][========== DEBUG---- cin ====]\n", ++fid);
+#endif
+            getline(cin, input);
+
+            n = input.size();
+
+            memset(buffer, 0, sizeof(buffer));
+            strcpy(buffer, input.c_str());
+
+#ifdef DEBUG_EN
+            printf("buf(%d) = [%s]\n", n, buffer);
+#endif
+
+            if (input == "qq")
+                break;
+
+
+            buffer[n++] = 0xa;
+            n = write(uart_fd, buffer, n);
+
+        }
+
+        return 0;
+    }
+
 };
 
-int initUart(int argc, const char * argv[])
-{
-    if (argc < 2 || argc > 3)
-    {
-        cerr << "usage: " << argv[0] << " device [bauds]" << endl;
-        return 1;
-    }
-
-    string device = argv[1];
-    int bauds = 9600;
-    if (argc == 3)
-    {
-        bauds = atoi(argv[2]);
-    }
-    else
-    {
-        cerr << "usage: " << argv[0] << " device [bauds]" << endl;
-        return 1;
-    }
-
-    int fd = open(argv[1], O_RDWR | O_NDELAY | O_NOCTTY);
-    if (fd == -1)
-    {
-        perror((string("can't open ") + argv[1]).c_str());
-        exit(errno);
-    }
-
-    struct termios config;
-    if (tcgetattr(fd, &config) < 0)
-    {
-        perror("can't get serial attributes");
-        exit(errno);
-    }
-
-    if (bauds < 0)
-    {
-
-        if (cfsetispeed(&config, bauds) < 0 || cfsetospeed(&config, bauds) < 0)
-        {
-            perror("can't set baud rate");
-            exit(errno);
-        }
-    }
-    else
-    {
-        printf("Bypass bauds\n");
-
-    }
-
-    config.c_iflag &= ~(IGNBRK | BRKINT | ICRNL | INLCR | PARMRK | INPCK | ISTRIP | IXON);
-    config.c_oflag = 0;
-    config.c_lflag &= ~(ECHO | ECHONL | ICANON | IEXTEN | ISIG);
-    config.c_cflag &= ~(CSIZE | PARENB);
-    config.c_cflag |= CS8;
-    config.c_cc[VMIN]  = 1;
-    config.c_cc[VTIME] = 0;
-
-    if (tcsetattr(fd, TCSAFLUSH, &config) < 0)
-    {
-        perror("can't set serial attributes");
-        exit(errno);
-    }
-
-    return fd;
-
-}
 
 void* f(void* arg)
 {
@@ -197,9 +167,6 @@ void* f(void* arg)
 
 int main(int argc, const char * argv[])
 {
-
-    //int fd = initUart(argc, argv);
-
     int fd = -1;
     HyTermBase ht_base;
 
@@ -230,36 +197,7 @@ int main(int argc, const char * argv[])
     pthread_t pth;
     pthread_create(&pth, NULL,f,  &fd);
 
-    char buffer[1024];
-    while (true)
-    {
-        errno = 0;
-        int n = 0;
-
-        string input;
-
-#ifdef DEBUG_EN
-        printf("[%d][========== DEBUG---- cin ====]\n", ++fid);
-#endif
-        getline(cin, input);
-
-        n = input.size();
-
-        memset(buffer, 0, sizeof(buffer));
-        strcpy(buffer, input.c_str());
-
-#ifdef DEBUG_EN
-        printf("buf(%d) = [%s]\n", n, buffer);
-#endif
-
-        if (input == "qq")
-            break;
-
-
-        buffer[n++] = 0xa;
-        n = write(fd, buffer, n);
-
-    }
+    ht_base.inputProc();
 
     close(fd);
     return 0;
