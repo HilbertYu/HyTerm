@@ -5,7 +5,8 @@ CC       = gcc
 CXX      = g++
 CFLAGS   = -g -Wall
 CXXFLAGS = $(CFLAGS) -Weffc++
-LIBS     = -lm -lpthread -lcurses
+#LIBS     = -lm -lpthread -lcurses
+LIBS     = -lm -lpthread
 INCPATH  =
 DIR     = $(shell pwd)
 

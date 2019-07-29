@@ -11,10 +11,80 @@
 #include <fcntl.h>
 #include <unistd.h>
 
-#include <curses.h>
+//#include <curses.h>
+
+#define NL_0A_EN
 
 
 using namespace std;
+
+class HyTermBase
+{
+    int uart_fd;
+public:
+    HyTermBase(void):
+        uart_fd(-1)
+    {
+
+    };
+
+    int initUart(const std::string & device, int bauds)
+    {
+        const char * c_device = device.c_str();
+
+        int fd = open(c_device, O_RDWR | O_NDELAY | O_NOCTTY);
+        if (fd == -1)
+        {
+            perror((string("can't open ") + device).c_str());
+            exit(errno);
+        }
+
+        struct termios config;
+        if (tcgetattr(fd, &config) < 0)
+        {
+            perror("can't get serial attributes");
+            exit(errno);
+        }
+
+        if (bauds > 0)
+        {
+
+            if (cfsetispeed(&config, bauds) < 0 || cfsetospeed(&config, bauds) < 0)
+            {
+                perror("can't set baud rate");
+                exit(errno);
+            }
+        }
+        else
+        {
+            printf("Bypass bauds\n");
+        }
+
+        config.c_iflag &= ~(IGNBRK | BRKINT | ICRNL | INLCR | PARMRK | INPCK | ISTRIP | IXON);
+        config.c_oflag = 0;
+        config.c_lflag &= ~(ECHO | ECHONL | ICANON | IEXTEN | ISIG);
+        config.c_cflag &= ~(CSIZE | PARENB);
+        config.c_cflag |= CS8;
+        config.c_cc[VMIN]  = 1;
+        config.c_cc[VTIME] = 0;
+
+        if (tcsetattr(fd, TCSAFLUSH, &config) < 0)
+        {
+            perror("can't set serial attributes");
+            exit(errno);
+        }
+
+        uart_fd = fd;
+        return fd;
+
+    }
+
+    int close(void)
+    {
+        return ::close(uart_fd);
+    }
+
+};
 
 int initUart(int argc, const char * argv[])
 {
@@ -25,16 +95,15 @@ int initUart(int argc, const char * argv[])
     }
 
     string device = argv[1];
-    unsigned long bauds = 9600;
+    int bauds = 9600;
     if (argc == 3)
     {
-        char* result;
-        bauds = strtoul(argv[2], &result, 10);
-        if (*result != '\0')
-        {
-            cerr << "usage: " << argv[0] << " device [bauds]" << endl;
-            return 1;
-        }
+        bauds = atoi(argv[2]);
+    }
+    else
+    {
+        cerr << "usage: " << argv[0] << " device [bauds]" << endl;
+        return 1;
     }
 
     int fd = open(argv[1], O_RDWR | O_NDELAY | O_NOCTTY);
@@ -51,7 +120,7 @@ int initUart(int argc, const char * argv[])
         exit(errno);
     }
 
-    if (bauds != 5566)
+    if (bauds < 0)
     {
 
         if (cfsetispeed(&config, bauds) < 0 || cfsetospeed(&config, bauds) < 0)
@@ -94,20 +163,31 @@ void* f(void* arg)
     while (true)
     {
         char * pbuf = buffer;
-        errno = 0;
         int ret = read(fd, pbuf, sizeof(buffer));
 
-        if (ret == 0)
-        {
-            perror("");
-        }
 
         if (ret <= 0)
             continue;
 
         int n = ret;
 
-        write(STDOUT_FILENO, buffer, n);
+        int n_fl = 0;
+        char out_buf[10240] = {0};
+
+        for (int i = 0; i < n; ++i)
+        {
+            char ch = *pbuf++;
+            if (ch == 0 || ch == '\r')
+                continue;
+
+            out_buf[n_fl++] = ch;
+
+        }
+
+
+
+        //write(STDOUT_FILENO, buffer, n);
+        write(STDOUT_FILENO, out_buf, n_fl);
         fflush(stdout);
 
     }
@@ -118,7 +198,34 @@ void* f(void* arg)
 int main(int argc, const char * argv[])
 {
 
-    int fd = initUart(argc, argv);
+    //int fd = initUart(argc, argv);
+
+    int fd = -1;
+    HyTermBase ht_base;
+
+    {
+        if (argc < 2 || argc > 3)
+        {
+            cerr << "usage: " << argv[0] << " device [bauds]" << endl;
+            return 1;
+        }
+
+        string device = argv[1];
+        int bauds = 9600;
+        if (argc == 3)
+        {
+            bauds = atoi(argv[2]);
+        }
+        else
+        {
+            cerr << "usage: " << argv[0] << " device [bauds]" << endl;
+            return 1;
+        }
+        printf("b = %d\n", bauds);
+
+        fd = ht_base.initUart(argv[1], bauds);
+    }
+
 
     pthread_t pth;
     pthread_create(&pth, NULL,f,  &fd);
@@ -137,11 +244,6 @@ int main(int argc, const char * argv[])
         getline(cin, input);
 
         n = input.size();
-
-
-        if (input == "x")
-            continue;
-
 
         memset(buffer, 0, sizeof(buffer));
         strcpy(buffer, input.c_str());
